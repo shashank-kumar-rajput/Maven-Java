@@ -1,27 +1,48 @@
+
+
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.*;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.*;
+
+import org.hibernate.Session;
+import org.hibernate.SessionFactory;
+import org.hibernate.Transaction;
+import org.hibernate.query.Query;
 
 public class Main {
-    public static void main(String[] args) throws FileNotFoundException {
+    public static void main(String[] args) throws FileNotFoundException, ParseException, InterruptedException  {
+        ReadCSVThread thread=new ReadCSVThread();
+        thread.start();
+ 	   
+        Thread.sleep(3000);
+
         Scanner sc=new Scanner(System.in);
         String color,gender,size;
         String choiceCode;
+        ArrayList<String> CSV_data=ReadCSVThread.getCSVData();     
+
 
         System.out.print("Enter Color for Tshirt  : ");
-        color=sc.nextLine().toUpperCase();
-        System.out.print("Enter Gender  : ");
-        gender=sc.nextLine().toUpperCase();
-        System.out.print("Enter size   : ");
-        size=sc.nextLine().toUpperCase();
+        color=sc.nextLine();
+        color=color.toUpperCase();
+        System.out.print("Please enter the Gender  : ");
+        gender=sc.nextLine();
+        gender=gender.toUpperCase();
+        System.out.print("Please enter Size   : ");
+        size=sc.nextLine();
+        size=size.toUpperCase();
         System.out.print("Enter Output Preference :   1. Price \t 2. Rating  \t 3. Both: ");
-        choiceCode=sc.nextLine().toUpperCase();
-
+        choiceCode=sc.nextLine();
+        choiceCode=choiceCode.toUpperCase();
+        CSV_data=ReadCSVThread.getCSVData();
         DataController fc=new DataController();
 
-        fc.searchData("src/main/resources/worksheet_adidas.csv",color,gender,size);
-      fc.searchData("src/main/resources/worksheet_adidas.csv",color,gender,size);
-       fc.searchData("src/main/resources/worksheet_adidas.csv",color,gender,size);
+        fc.searchData(CSV_data,color,gender,size);
+    
       fc.upsizeView(choiceCode);
     }
 }
@@ -31,24 +52,27 @@ class DataController {
     ArrayList<String> arr;
     DataView view=new DataView();
 
-    public void searchData(String filename, String color, String gender, String size) throws FileNotFoundException
+    public void searchData(ArrayList<String> CSV_data, String color, String gender, String size) throws FileNotFoundException
     {
-        Scanner sc = new Scanner(new File(filename));
-        while(sc.hasNext()) {
-            String line = sc.nextLine().toUpperCase().toString();
-            if (!line.isEmpty()) {
-                StringTokenizer token = new StringTokenizer(line, "|");
-                arr = new ArrayList<>(line.length());
-                while (token.hasMoreTokens()) {
-                    arr.add(token.nextToken());
-                }
-               
-                if (arr.get(2).equals(color) && arr.get(3).equals(gender) && arr.get(4).equals(size)) {
-                    Model model = new Model(arr.get(0), arr.get(1), arr.get(2), arr.get(3),arr.get(4), arr.get(5), arr.get(6));
-                    TshirtList.add(model);
-                }
-            }
-        }
+    	SessionFactory sessionFactory = HibernateUtil.getSessionFactory();
+   	    Session session = sessionFactory.openSession();
+   	    Transaction tnx=session.beginTransaction();
+
+   	    Query q=session.createQuery("from CSVData ");
+   	    List<CSVData> lst=q.list();
+   	    List<CSVData> res=new ArrayList<CSVData>();
+   	    for(CSVData l:lst)
+   	    {
+   	    	
+   	    	
+   	    	if (l.color.equals(color) && l.gender.equals(gender) &&  (l.size.equals(size)) ) 
+   	    	{
+                Model model = new Model(l.TshirtId, l.name, l.color, l.gender, l.size, l.price,l.rating);
+                TshirtList.add(model);	
+//  	    
+   	    	}
+   	    }
+   	    tnx.commit();
     }
 
     public void upsizeView(String choiceCode)
@@ -80,13 +104,7 @@ class Model {
 
     private String TshirtId;
     private String name;
-    public String getName() {
-		return name;
-	}
-
-	public void setName(String name) {
-		this.name = name;
-	}
+   
 	private String color;
     private String gender;
     private String size;
@@ -105,6 +123,13 @@ class Model {
         this.price = price;
         this.rating = rating;
     }
+    public String getName() {
+		return name;
+	}
+
+	public void setName(String name) {
+		this.name = name;
+	}
 
     public String getTshirtId()
     {
@@ -160,13 +185,7 @@ class Model {
     }
 
 }
- class PriceComparator implements Comparator<Model>
-{
-    public int compare(Model o1, Model o2)
-    {
-       return o1.getName().compareTo(o2.getName());
-   }
-}
+
 
 class DataView {
 
